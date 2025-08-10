@@ -138,6 +138,68 @@ class CoTPaper:
             
         return self.entities
         
+    def build_chains_of_thought(self, entities: list[dict] = None) -> list[dict]:
+        """Build logical chains of reasoning from the identified entities"""
+        if entities is None:
+            entities = self.entities
+
+        if not entities:
+            raise ValueError("No entities available. Run identify_entities() first.")
+
+        system_message = CHAIN_OF_THOUGHT_SYSTEM_MESSAGE
+
+        entities_text = json.dumps(entities, indent=2)
+
+        prompt = f"""Entities identified from the paper:
+
+        {entities_text}
+
+        <End of entities>
+
+        Based on these entities, create logical chains of reasoning to determine the most likely retraction reason(s).
+
+        Return results in JSON format:
+        {{
+            "chains": [
+                {{
+                    "chain_id": 1,
+                    "entity_sequence": ["entity1", "entity2", "entity3"],
+                    "reasoning_steps": [
+                        "Step 1: Entity1 indicates...",
+                        "Step 2: This connects to Entity2 because...",
+                        "Step 3: Together they suggest..."
+                    ],
+                    "confidence_score": 8,
+                    "retraction_reason": 1,
+                    "explanation": "Overall explanation of this chain's conclusion"
+                }}
+            ],
+            "final_assessment": {{
+                "most_likely_reason": 1,
+                "confidence": 9,
+                "supporting_chains": [1, 2],
+                "summary": "Comprehensive explanation of the retraction reason"
+            }}
+        }}
+        """
+
+        response = query_chat_openai(system_message, prompt)
+
+        try:
+            response = json.loads(response)
+            self.chains_of_thought = response
+        except json.JSONDecodeError:
+            if '{"chains"' in response:
+                split_response = response.split('{')[1]
+                response = json.loads(f"{{{split_response}")
+                self.chains_of_thought = response
+            else:
+                raise Exception('Error building chains of thought: Response from LLM is not JSON compliant')
+
+        return self.chains_of_thought
+        
+
+    
 
 
         
