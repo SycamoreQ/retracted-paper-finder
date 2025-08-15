@@ -1,6 +1,7 @@
 from langchain_community.graphs import Neo4jGraph
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import PromptTemplate,MessagesPlaceholder,ChatPromptTemplate
+from model.llm import 
 import json 
 
 class Graph:
@@ -23,7 +24,7 @@ class Graph:
             f"""
                 MATCH (n:`Document`)
                 REMOVE n:`Document`
-                SET n:`Document{uuid}`
+                SET n:`Document{DOI}`
             """
         )
         
