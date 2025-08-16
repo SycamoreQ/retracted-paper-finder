@@ -7,24 +7,7 @@ from redis.commands.search import Search
 from redis.commands.search.aggregation import AggregateRequest
 from typing import List, Dict, Optional, Any
 
-
-redis_client = redis.Redis(host="localclient" , port="9000" , db = 0)
-
-def schema_match(agg_func: str) -> TagField: 
-    if agg_func == "entities":
-        match agg_func : 
-            case 1: 
-                schema = TagField("$entities[*].entityId" , as_name = "entityId")
-
-    if agg_func == "chain": 
-        match agg_func : 
-            case 1: 
-                schema = TagField("$entities[*].confidence_score" , as_name = "confidence_score")
-
-
-    return schema 
             
-
 
 
 COT_BREAKDOWN_PROBLEM_SYSTEM_MESSAGE = """You are an expert in breaking down a big problem into smaller problems. The reason you break down big problems into smaller ones, is that the system can then search for solutions for each one of the small problems individually, thus increasing the chance of success.
@@ -204,7 +187,6 @@ class CoTPaper:
                                 "category": "metadata/content/quality_indicator/administrative/textual_clue",
                                 "relevance_score": 8,
                                 "potential_retraction_reason": 1,
-                                "page_number": 7,
                                 "context": "surrounding context or explanation"
                             }}
                         ]
@@ -225,13 +207,8 @@ class CoTPaper:
 
             else:
                 raise Exception('error identifying entities: Response from LLM is not json compliant')
-            
-
-        unique_key = (entities["entityId"] for entities in response["entitiyId"])
-        redis_client.set(unique_key , response)
-
              
-        return self.entities , redis_client
+        return self.entities 
         
     def build_chains_of_thought(self, entities: list[dict] = None) -> list[dict]:
         """Build logical chains of reasoning from the identified entities"""
@@ -265,14 +242,12 @@ class CoTPaper:
                         "Step 3: Together they suggest..."
                     ],
                     "confidence_score": 8,
-                    "retraction_reason": 1,
                     "frequency": 1,
                     "severity_level": {self.severity_level_calculator(response["frequency"])},
                     "explanation": "Overall explanation of this chain's conclusion"
                 }}
             ],
             "final_assessment": {{
-                "most_likely_reason": 1,
                 "confidence": 9,
                 "supporting_chains": [1, 2],
                 "summary": "Comprehensive explanation of the retraction reason"
@@ -294,9 +269,6 @@ class CoTPaper:
                 raise Exception('Error building chains of thought: Response from LLM is not JSON compliant')
             
         
-        unique_key = [entities["chain_id"] for entities in response["chain_id"]]
-        redis_client.set(unique_key , response)
-
         return self.chains_of_thought
     
     def cluster_papers(self  , paper_content: str , entities : List[dict] , cluster_threshold: int = 10 ) -> json : 
