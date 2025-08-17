@@ -104,6 +104,23 @@ filtered_schema = [
     }
 ]
 
+cluster_schema = [
+    {
+        "$jsonSchema" : {
+            "bsonType" : "object",
+            "required" : ["cluster_id" , "cluster_size" , "cluster_intra_relations" , "avg_severity" , "avg_confidence" , "common_reason "],
+            
+
+            "properties": {
+                "cluster_id" : {"bsonType" : "int"},
+                "cluster_size" : {"bsonType" : "int"},
+                "cluster_relations" : {"bsonType" : "string"},
+                "avg_confidence_score" : {"bsonType" : "float"},
+                "avg_severity_level" : {"bsonType" : "float"}
+            }
+        }
+    }
+]
 
 
 

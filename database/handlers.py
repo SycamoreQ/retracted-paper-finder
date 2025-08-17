@@ -27,6 +27,84 @@ class Entities:
 
             return entity.get("TextContent")
     
-    def 
+    def get_entities_by_relevance(db: MongoClient, relevance_score: int) -> MongoClient:
+        return db.entities.find({"Relevance_score": relevance_score})
+    
+    def get_entities_by_potential_rank(db: MongoClient, potential_rank: int) -> MongoClient:
+        return db.entities.find({"Potential_rank": potential_rank})
+    
+    def get_entities_by_context(db: MongoClient, context: str) -> MongoClient:
+        return db.entities.find({"Context": context})
+    
+    def get_top_entities_by_relevance(db, top_n=10):
+        return db.entities.find().sort("Relevance_score", -1).limit(top_n)
+    
+    def avg_relevance_by_category(db):
+        pipeline = [
+            {"$group": {"_id": "$Category", "avg_relevance": {"$avg": "$Relevance_score"}}},
+            {"$sort": {"avg_relevance": -1}}
+        ]
+        return db.entities.aggregate(pipeline)
+
+
+    
+
+class Chains: 
+    def get_chain_by_id(db : MongoClient , chain_id: int) -> int:
+        return db.entities.find_one({"chain_ id" : chain_id})
+    
+    def get_no_entities(db : MongoClient , chain_id: int) -> MongoClient : 
+
+        chain = db.chains.find_one({"chain_id" : chain_id} , {"entity_id" : 1} , {"_id" : 0})
+
+        if chain and entity_id in chain : 
+            return len(chain["entity_ids"])
+        else :
+            return 0
+        
+    def chains_with_most_entities(db, limit=5):
+        pipeline = [
+            {"$project": {"chain_id": 1, "num_entities": {"$size": "$entity_ids"}}},
+            {"$sort": {"num_entities": -1}},
+            {"$limit": limit}
+        ]
+        return db.chains.aggregate(pipeline)
+    
+    def avg_confidence_by_retraction_reason(db):
+        pipeline = [
+            {"$group": {"_id": "$retraction_reason", "avg_confidence": {"$avg": "$confidence_score"}}},
+            {"$sort": {"avg_confidence": -1}}
+        ]
+        return db.chains.aggregate(pipeline)
+    
+    def chains_with_shared_entities(db, entity_id):
+        return db.chains.find({"entity_ids": entity_id})
+    
+    def combined_reasoning_steps(db, chain_id):
+        chain = db.chains.find_one({"chain_id": chain_id}, {"reasoning_steps": 1, "_id": 0})
+        if chain and "reasoning_steps" in chain:
+            return " ".join(chain["reasoning_steps"])
+        return None
+    
+
+class Cluster: 
+    def get_cluster_by_id(db: MongoClient, cluster_id: int) -> MongoClient:
+        return db.clusters.find_one({"cluster_id": cluster_id})
+    
+    def get_clusters_by_size(db: MongoClient, min_size: int) -> MongoClient:
+        return db.clusters.find({"cluster_size": {"$gte": min_size}})
+    
+    def avg_severity_by_cluster(db: MongoClient):
+        pipeline = [
+            {"$group": {"_id": "$cluster_id", "avg_severity": {"$avg": "$avg_severity"}}},
+            {"$sort": {"avg_severity": -1}}
+        ]
+        return db.clusters.aggregate(pipeline)
+    
+    def clusters_with_common_reason(db: MongoClient, reason: str) -> MongoClient:
+        return db.clusters.find({"common_reason": reason})
+
+
+
 
  
