@@ -6,6 +6,12 @@ from redis.commands.search.index_definition import IndexType , IndexDefinition
 from redis.commands.search import Search 
 from redis.commands.search.aggregation import AggregateRequest
 from typing import List, Dict, Optional, Any
+import pymongo
+from pymongo import MongoClient
+
+
+client = MongoClient("mongodb://localhost:27017/")
+db = client["retraction-paper-db"]
 
             
 
@@ -98,17 +104,16 @@ class CoTPaper:
         system_message = """You are an expert at extracting metadata from academic papers. 
         Extract the following information and return it in JSON format:
         - title
-        - authors (with affiliations if available)
-        - publication_date
-        - doi
+        - authors
+        - DOI
+        - publication date 
         - journal
-        - abstract
-        - keywords
-        - subject_categories"""
+        - subject
+        """
         
         prompt = f"""Extract metadata from this paper:
 
-        {paper_content[:3000]}  # First 3000 chars for metadata
+        {paper_content[:3000]}  
 
         Return in this JSON format:
         {{
@@ -119,8 +124,6 @@ class CoTPaper:
             "publication_date": "YYYY-MM-DD",
             "doi": "10.xxxx/xxxxx",
             "journal": "Journal Name",
-            "abstract": "Abstract text",
-            "keywords": ["keyword1", "keyword2"],
             "subject_categories": ["cs.AI", "stat.ML"]
         }}
         """
@@ -134,6 +137,8 @@ class CoTPaper:
                                                         metadata.get('publication_date', ''))
             
             self.analysis_data["paper_analysis"]["metadata"] = metadata
+            db.papers.insert_many(metadata)
+            
             return metadata
         except json.JSONDecodeError:
             print("⚠️ Could not extract metadata, using defaults")
@@ -204,6 +209,7 @@ class CoTPaper:
                 split_response = response.split('{}')[1]
                 response = json.load(f"{{{split_response}")
                 self.entities = response['entities']
+                db.entities.insert_many(self.entities)
 
             else:
                 raise Exception('error identifying entities: Response from LLM is not json compliant')
@@ -260,6 +266,8 @@ class CoTPaper:
         try:
             response = json.loads(response)
             self.chains_of_thought = response
+            db.chains.insert_many(self.chains_of_thought)
+
         except json.JSONDecodeError:
             if '{"chains"' in response:
                 split_response = response.split('{')[1]
@@ -289,11 +297,12 @@ class CoTPaper:
         {{
             "clusters":[
                 {{
-                    "cluster_id": 1 ,
+                    "cluster_id": "1"  ,
+                    "cluster_size" : "the number of entities in each cluster",
                     "common_reason" : "Chains are clustered because they all violate the arxiv policy", 
-                    "possible_connection" : "Chains 1 and 2 might be closely connected because of the same author and the same reaosns for retraction" ,
+                    "cluster_relations" : "Chains 1 and 2 might be closely connected because of the same author and the same reaosns for retraction" ,
                     "average_severity_level" : "6.5" ,
-                    "average_confidence_score" : 5.4 
+                    "average_confidence_score" : "5.4" 
                 }}
                 ],
 
@@ -305,7 +314,26 @@ class CoTPaper:
                 }}
             }}
         """
+
+        response = query_chat_openai(system_message, prompt)
+
+        try : 
+            response = json.loads(response)
+            self.clusters = response
+            db.clusters.insert_many(self.clusters)
+
+        except json.JSONDecodeError:
+            if '{"chains"' in response:
+                split_response = response.split('{')[1]
+                response = json.loads(f"{{{split_response}")
+                self.chains_of_thought = response
+
+            else : 
+                print("not json compliant")
         
+        return self.clusters
+
+
         
     
     def severity_level_calculator(frequency: float):
