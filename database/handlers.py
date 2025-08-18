@@ -103,6 +103,52 @@ class Cluster:
     
     def clusters_with_common_reason(db: MongoClient, reason: str) -> MongoClient:
         return db.clusters.find({"common_reason": reason})
+    
+    def find_cluster_similarity(db : MongoClient, cluster_id: int) -> MongoClient:
+        cluster = db.clusters.find_one({"cluster_id": cluster_id})
+        if not cluster:
+            return None
+        
+        pipeline = [
+            {"$match": {"cluster_id": {"$ne": cluster_id}}},
+            {"$project": {
+                "cluster_id": 1,
+                "similarity_score": {
+                    "$size": {
+                        "$setIntersection": ["$cluster_relations", cluster["cluster_relations"]]
+                    }
+                }
+            }},
+            {"$sort": {"similarity_score": -1}}
+        ]
+        
+        return db.clusters.aggregate(pipeline)
+    
+    def clusters_with_high_avg_confidence(db: MongoClient, threshold: float) -> MongoClient:
+        return db.clusters.find({"avg_confidence_score": {"$gte": threshold}})
+    
+    def clusters_with_high_avg_severity(db: MongoClient, threshold: float) -> MongoClient:
+        return db.clusters.find({"avg_severity_level": {"$gte": threshold}})
+    
+    def community_detection(db : MongoClient , min_size = 3 ): 
+
+        pipeline = [
+            {"$project": {"entity_ids": 1, "chain_id": 1, "_id": 0}},
+            {"$match": {"$expr": {"$gte": [{"$size": "$entity_ids"}, min_size]}}},
+            {"$group": {
+                "_id": "$entity_ids", 
+                "chains": {"$addToSet": "$chain_id"},
+                "community_size": {"$first": {"$size": "$entity_ids"}},
+                "chain_count": {"$sum": 1},
+                "similarity_score" : {"$sort":SON([{"similarity_score.value" , -1}])}
+            }},
+            {"$sort": SON([("community_size", -1), ("chain_count", -1)])}
+            ]
+        
+        return db.clusters.aggregate(pipeline)
+
+    
+
 
 
 
