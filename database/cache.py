@@ -158,12 +158,36 @@ class SimilaritySearch:
                         'doi': paper.get('DOI')
                     })
         
-        # Sort by similarity and return top_k
         similarities.sort(key=lambda x: x['similarity_score'], reverse=True)
         results = similarities[:top_k]
         
-        # Cache results
         if self.cache:
             self.cache.cache_similar_papers(query_hash, results)
         
         return results
+    
+    def find_similar_entities(self, db: MongoClient, entity_text: str, top_k: int = 5) -> List[Dict]:
+        """Find similar entities based on text content"""
+        entity_embedding = self.generate_embedding(entity_text)
+        
+        # Get entities with embeddings
+        entities_cursor = db.entities.find({"embedding": {"$exists": True}})
+        
+        similarities = []
+        for entity in entities_cursor:
+            if 'embedding' in entity and entity['embedding']:
+                entity_emb = np.array(entity['embedding'])
+                similarity = cosine_similarity([entity_embedding], [entity_emb])[0][0]
+                
+                similarities.append({
+                    'entity_id': entity.get('EntityID'),
+                    'text_content': entity.get('TextContent'),
+                    'category': entity.get('Category'),
+                    'similarity_score': float(similarity),
+                    'relevance_score': entity.get('Relevance_score')
+                })
+        
+        similarities.sort(key=lambda x: x['similarity_score'], reverse=True)
+        return similarities[:top_k]
+    
+    
