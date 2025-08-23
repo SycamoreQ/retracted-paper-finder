@@ -2,6 +2,10 @@ import pymongo
 import datetime
 from bson.son import SON
 from pymongo import MongoClient
+import random
+import numpy as np
+import pinecone as pc 
+from sentence_transformers import SentenceTransformer
 
 
 client = MongoClient("mongodb://localhost:27017/")
@@ -146,6 +150,16 @@ class Cluster:
             ]
         
         return db.clusters.aggregate(pipeline)
+    
+
+class Search : 
+    
+    # Add to requirements: pinecone-client, sentence-transformers
+    def generate_embeddings(self, text):
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        return model.encode(text)
+
+    def find_similar_papers(self, query_embedding, top_k=10):
 
     
 
