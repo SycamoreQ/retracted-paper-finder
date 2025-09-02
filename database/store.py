@@ -1,127 +1,100 @@
-import pymongo 
-import datetime
+"""A module containing 'PipelineStorage' model."""
+
+import re
+from abc import ABCMeta, abstractmethod
+from collections.abc import Iterator
+from datetime import datetime
+from typing import Any
 
 
-paper_schema = [
+class PipelineStorage(metaclass=ABCMeta):
+    """Provide a storage interface for the pipeline. This is where the pipeline will store its output data."""
 
-    {
-    "$jsonSchema": {
-        "bsonType": "object",
-        "required": ["title", "author", "DOI", "Date", "Journal", "Subject"],
-        "properties": {
-            "title": {
-                "bsonType": "string",
-                "description": "Paper title"
-            },
+    @abstractmethod
+    def find(
+        self,
+        file_pattern: re.Pattern[str],
+        base_dir: str | None = None,
+        file_filter: dict[str, Any] | None = None,
+        max_count=-1,
+    ) -> Iterator[tuple[str, dict[str, Any]]]:
+        """Find files in the storage using a file pattern, as well as a custom filter function."""
 
-            "author": {
-                "bsonType": "string",
-                "description": "Author name"
-                },
+    @abstractmethod
+    async def get(
+        self, key: str, as_bytes: bool | None = None, encoding: str | None = None
+    ) -> Any:
+        """Get the value for the given key.
 
-            "DOI": {
-                "bsonType": "string",
-                "description": "Document Object ID"
-            },
+        Args:
+            - key - The key to get the value for.
+            - as_bytes - Whether or not to return the value as bytes.
 
-            "Date": {
-                "bsonType": "date",
-                "description": "Publication date"
-            },
+        Returns
+        -------
+            - output - The value for the given key.
+        """
 
-            "Journal": {
-                "bsonType": "string",
-                "description": "Journal name"
-            },
+    @abstractmethod
+    async def set(self, key: str, value: Any, encoding: str | None = None) -> None:
+        """Set the value for the given key.
 
-            "Subject": {
-                "bsonType": "string",
-                "description": "Paper subject category"
-            }
-        }
-    }
-    }
-]
+        Args:
+            - key - The key to set the value for.
+            - value - The value to set.
+        """
 
+    @abstractmethod
+    async def has(self, key: str) -> bool:
+        """Return True if the given key exists in the storage.
 
-entities_schema = [
-    {
-  "$jsonSchema": {
-        "bsonType": "object",
-        "required": ["EntityID", "TextContent", "Category", "Relevance_score", "Potential_rank", "Context"],
+        Args:
+            - key - The key to check for.
 
-        "properties": {
-            "EntityID": {"bsonType": "int"},
-            "TextContent": {"bsonType": "string"},
-            "Category": {"bsonType": "string"},
-            "Relevance_score": {"bsonType": "int"},
-            "Potential_rank": {"bsonType": "int"},
-            "Context": {"bsonType": "string"}
-            }
-        }
-    }
-]
+        Returns
+        -------
+            - output - True if the key exists in the storage, False otherwise.
+        """
 
-chain_schema = [
-    {
-  "$jsonSchema": {
-        "bsonType": "object",
-        "required": ["chain_id", "entity_ids", "reasoning_steps", "confidence_score", "Frequency", "Severity_level", "OverallExplanation"],
+    @abstractmethod
+    async def delete(self, key: str) -> None:
+        """Delete the given key from the storage.
 
-        "properties": {
-            "chain_id": {"bsonType": "int"},
-            "entity_ids": {
-                "bsonType": "array",
-                "items": {"bsonType": "int"}
-            },
+        Args:
+            - key - The key to delete.
+        """
 
-            "reasoning_steps": {
-                "bsonType": "array",
-                "items": {"bsonType": "string"}
-            },
+    @abstractmethod
+    async def clear(self) -> None:
+        """Clear the storage."""
 
-            "confidence_score": {"bsonType": "int"},
-            "Frequency": {"bsonType": "int"},
-            "Severity_level": {"bsonType": "int"},
-            "OverallExplanation": {"bsonType": "string"}
-            }
-        }
-    }
-]
+    @abstractmethod
+    def child(self, name: str | None) -> "PipelineStorage":
+        """Create a child storage instance."""
 
-filtered_schema = [
-    {
-        "$jsonSchema":{
-            "bsonType" : "object",
-            "required" : ["chain_id" , "summary" , "confidence_score"],
+    @abstractmethod
+    def keys(self) -> list[str]:
+        """List all keys in the storage."""
 
-            "properties": {
-                "chain_id" : {"bsonType" : "int"},
-                "summary":   {"bsonType" : "string"},
-                "confidence_score" : {"bsonType" : "int"}
-            }
-        }
-    }
-]
+    @abstractmethod
+    async def get_creation_date(self, key: str) -> str:
+        """Get the creation date for the given key.
 
-cluster_schema = [
-    {
-        "$jsonSchema" : {
-            "bsonType" : "object",
-            "required" : ["cluster_id" , "cluster_size" , "cluster_intra_relations" , "avg_severity" , "avg_confidence" , "common_reason "],
-            
+        Args:
+            - key - The key to get the creation date for.
 
-            "properties": {
-                "cluster_id" : {"bsonType" : "int"},
-                "cluster_size" : {"bsonType" : "int"},
-                "cluster_relations" : {"bsonType" : "string"},
-                "avg_confidence_score" : {"bsonType" : "float"},
-                "avg_severity_level" : {"bsonType" : "float"}
-            }
-        }
-    }
-]
+        Returns
+        -------
+            - output - The creation date for the given key.
+        """
 
 
+def get_timestamp_formatted_with_local_tz(timestamp: datetime) -> str:
+    """Get the formatted timestamp with the local time zone."""
+    creation_time_local = timestamp.astimezone()
 
+    return creation_time_local.strftime("%Y-%m-%d %H:%M:%S %z")
 
+def timestamp_to_isoformat(timestamp: datetime) -> str:
+    """Convert a timestamp to ISO 8601 format."""
+    return timestamp.astimezone().isoformat()
