@@ -18,6 +18,7 @@ class Paper:
     subject: list[str] 
 
     attributes: dict[str , Any]
+ 
 
     @classmethod
     def from_dict(

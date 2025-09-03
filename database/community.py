@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import Any
-import entity
+from entity import Paper
 
 @dataclass
 class Chain:
     type: str
     chain_id: str
     entity_ids: list[str]
-    entities: entity.Entity
+    entities: list[Paper]
     relationship_id: list[str]
     attributes: dict[str, Any]
     reasoning_steps: dict[Any, str]
