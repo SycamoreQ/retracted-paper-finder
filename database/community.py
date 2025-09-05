@@ -37,8 +37,8 @@ class Chain:
         # Handle entities field - assuming it might be a dict that needs conversion
         entities_data = d[entities_key]
         if isinstance(entities_data, dict):
-            entities_value = entity.Entity.from_dict(entities_data)
-        elif isinstance(entities_data, entity.Entity):
+            entities_value = Paper.from_dict(entities_data)
+        elif isinstance(entities_data, Paper.Entity):
             entities_value = entities_data
         else:
             raise ValueError(f"Invalid entities data type: {type(entities_data)}")
